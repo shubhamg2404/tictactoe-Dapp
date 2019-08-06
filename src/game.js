@@ -1,3 +1,5 @@
+const utils = require("./utils");
+const io = require('socket.io-client');
 const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout
@@ -5,13 +7,37 @@ const readline = require('readline').createInterface({
 
 
 class Game {
-    constructor(players,sign) {
-        this.players = players;
+    constructor(address,sign) {
+        //this.players = players;
         this.board = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-        this.isYourTurn = true;
-        this.address = "shubham"
+        this.isYourTurn = false;
+        this.address = address;
         this.winner = undefined;
         this.sign = sign;
+        this.socket = io.connect("http://localhost:4000");
+        this.gameId = null;
+        this.addListeners();
+    }
+    addListeners(){
+        console.warn("Waiting For server");
+        this.socket.on("start",(isYourTurn,gameId)=>{
+            this.start(isYourTurn,gameId)
+        });
+        this.socket.on("play",(param)=>{
+            this.recieveDataFromServer(param)
+        });
+        this.socket.emit("join",this.address);
+    }
+
+    /*
+        Function to do initial setup
+    */
+    start(isYourTurn, gameId){
+        this.isYourTurn = isYourTurn;
+        this.gameId = gameId;
+        console.warn("Game has started");
+        console.warn(this.isYourTurn,gameId);
+        this.displayBoard();
     }
     /*
         Function to display to board to console
@@ -52,7 +78,7 @@ class Game {
         Function to update game state
     */
     updateState(game) {
-        this.isYourTurn = !(game.fromAddress == this.address);
+        this.isYourTurn = true;
         this.board = game.board;
         this.checkWinner();
         this.displayBoard();
@@ -83,6 +109,7 @@ class Game {
         //this.isYourTurn = false;
         this.displayBoard();
         this.displayWaiting();
+        this.sendDataToServer();
     }
 
     /*
@@ -109,7 +136,26 @@ class Game {
         Emit board to server
     */
     sendDataToServer() {
+        var gameObject = {
+            address:this.address,
+            board:this.board,
+            winner:this.winner
+        }
+        var encryptedData = utils.encryptMessage(gameObject);
 
+        // Write logic to emit data to server
+        this.socket.emit("play",encryptedData)
+        
     }
+    recieveDataFromServer(data){
+        var game = utils.decryptMessage(data);
+        this.updateState(game);
+    }
+
+    
 }
-new Game(null,"x").displayBoard();
+
+readline.question(`Input Address: `, (address) => {
+    new Game(address,"x");    
+})
+
