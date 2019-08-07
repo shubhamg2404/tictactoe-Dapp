@@ -15,5 +15,10 @@ function encryptMessage(messageObject) {
     return retValue;
 }
 
+function generateRandomId() {
+    return Math.floor(Math.random() * 1000000000000000);
+}
+
 module.exports.encryptMessage = encryptMessage;
 module.exports.decryptMessage = decryptMessage;
+module.exports.generateRandomId = generateRandomId;
