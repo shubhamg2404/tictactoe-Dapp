@@ -1,6 +1,6 @@
 const express = require('express');
 const socket = require('socket.io');
-
+const utils = require('./utils');
 
 var app = express();
 var gameMapping = {};
@@ -14,40 +14,43 @@ var io = socket(server);
 io.on('connection', function (socket) {
     console.log("made a socket connection");
 
-
-
     socket.on('join', function (address) {
-        console.warn(address,"joined");
+        console.warn(address, "joined");
         if (!Object.keys(gameMapping).length) {
-            console.warn("Creating new game");
-            generateNewGame(address,socket);
-        }else{
+            generateNewGame(address, socket);
+        } else {
             var currentGame = getPendingGame();
-            if(!currentGame){
-                currentGame = generateNewGame(address,socket);
-            }else{
-                console.warn("found already pending game",currentGame.id);
+            if (!currentGame) {
+                currentGame = generateNewGame(address, socket);
+            } else {
+                console.warn("found already pending game", currentGame.id);
+                currentGame.addPlayer(address, socket);
             }
-            currentGame.addPlayer(address,socket);
+
         }
     })
 
     socket.on('play', function (data) {
-        console.warn(data);
-        socket.broadcast.emit("play", data);
+        var decryptedData = utils.decryptMessage(data);
+        var id = decryptedData.gameId;
+        var address = decryptedData.address;
+        if (id in gameMapping) {
+            gameMapping[id].sendDataToClient(address, data);
+        }
+        //socket.broadcast.emit("play", data);
     })
 
 })
 
-function generateNewGame(address,socket){
+function generateNewGame(address, socket) {
     var gameId = generateRandomId();
     gameMapping[gameId] = new GameObject(gameId, address, socket);
     return gameMapping[gameId];
 }
 
-function getPendingGame(){
-    for(var key in gameMapping){
-        if(gameMapping[key].isWaiting) return gameMapping[key];
+function getPendingGame() {
+    for (var key in gameMapping) {
+        if (gameMapping[key].isWaiting) return gameMapping[key];
     }
     return false;
 }
@@ -58,6 +61,7 @@ function generateRandomId() {
 }
 
 function GameObject(id, address, socket) {
+    console.warn("New Game Object defined");
     this.id = id;
     this.players = 0;
     this.isWaiting = true;
@@ -75,16 +79,20 @@ function GameObject(id, address, socket) {
         }
     }
     this.start = function () {
-        console.warn('staring new game');
+        console.warn('staring new game', this.id);
         var firstChance = Math.round(Math.random());
-        console.warn(firstChance);
         this.connections[firstChance].emit("start", true, this.id);
         this.connections[1 - firstChance].emit("start", false, this.id);
         this.isWaiting = false;
     }
 
-    this.sendDataToClient = function (data) {
-
+    this.sendDataToClient = function (fromAddress, data) {
+        var index = this.playerAddress.indexOf(fromAddress);
+        if (index != -1) {
+            this.connections[1 - index].emit("play", data);
+        }else{
+            console.warn("NOT FOUND")
+        }
     }
-    this.addPlayer(address,socket);
+    this.addPlayer(address, socket);
 }

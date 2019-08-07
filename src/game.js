@@ -7,13 +7,12 @@ const readline = require('readline').createInterface({
 
 
 class Game {
-    constructor(address,sign) {
+    constructor(address) {
         //this.players = players;
         this.board = [0, 0, 0, 0, 0, 0, 0, 0, 0];
         this.isYourTurn = false;
         this.address = address;
         this.winner = undefined;
-        this.sign = sign;
         this.socket = io.connect("http://localhost:4000");
         this.gameId = null;
         this.addListeners();
@@ -32,11 +31,11 @@ class Game {
     /*
         Function to do initial setup
     */
-    start(isYourTurn, gameId){
+    start (isYourTurn, gameId){
         this.isYourTurn = isYourTurn;
         this.gameId = gameId;
-        console.warn("Game has started");
-        console.warn(this.isYourTurn,gameId);
+        console.warn("Game has started",this.sign);
+        this.sign = (this.isYourTurn)?"X":"O";
         this.displayBoard();
     }
     /*
@@ -72,7 +71,38 @@ class Game {
     /*
         Function to check if the winner is decided
     */
-    checkWinner() { }
+    checkWinner() { 
+        var oWinner = "OOO",
+            xWinner = "XXX";
+        var posibleCombinations = [
+            [0,1,2],
+            [3,4,5],
+            [6,7,8],
+            [0,3,6],
+            [1,4,7],
+            [2,5,8],
+            [0,4,8],
+            [2,4,6]
+        ]
+        for(var index in posibleCombinations){
+            var combination = posibleCombinations[index];
+            var string = '';
+            for(var innerIndex in combination){
+                string += this.board[combination[innerIndex]];
+            }
+            console.warn(string);
+            if(string === oWinner){
+                this.winner = oWinner;
+            }
+            if(string ==xWinner){
+                this.winner = xWinner;
+            }
+            if(this.winner){
+                console.warn(`Player: ${this.winner} won!`);
+                return;
+            }
+        }
+    }
 
     /*
         Function to update game state
@@ -92,7 +122,7 @@ class Game {
             index = +index;
             if (this.checkIfValidInput(index)) {
                 this.updateBoard(index);
-                //readline.close();
+                // readline.close();
             } else {
                 console.warn("Invalid Input!");
                 this.takeUserInput();
@@ -139,7 +169,8 @@ class Game {
         var gameObject = {
             address:this.address,
             board:this.board,
-            winner:this.winner
+            winner:this.winner,
+            gameId:this.gameId 
         }
         var encryptedData = utils.encryptMessage(gameObject);
 
@@ -156,6 +187,7 @@ class Game {
 }
 
 readline.question(`Input Address: `, (address) => {
-    new Game(address,"x");    
+    new Game(address,"x");
+        
 })
 
