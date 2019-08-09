@@ -4,7 +4,7 @@ const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout
 })
-
+const input = require('readline-sync');
 
 class Game {
     constructor(address) {
@@ -15,7 +15,17 @@ class Game {
         this.winner = undefined;
         this.socket = io.connect("http://localhost:4000");
         this.gameId = null;
+        this.rounds = 1;
+        this.currentRound = 1;
+        this.newGame = this.askToCreateGame();
         this.addListeners();
+    }
+
+    askToCreateGame(){
+        if(input.keyInYN('Do you want to create new game?')){
+            return true;
+        }
+        return false;
     }
 
     /*
@@ -32,17 +42,32 @@ class Game {
         this.socket.on("play", (param) => {
             this.recieveDataFromServer(param)
         });
-        this.socket.emit("join", this.address);
+
+        if(this.newGame){
+            readline.question("How many rounds? ",(rounds)=>{
+                this.rounds = rounds;
+                readline.question("Bet amount in eth?: ",(bet)=>{
+                    this.bet = bet;
+                    this.socket.emit("newGame",this.address,this.rounds,this.bet); 
+                })
+            })
+        }else{
+            readline.question("Enter Game Id: ",(gameNumber)=>{
+                this.socket.emit("join",this.address,gameNumber);
+            })
+        }
+
+        //this.socket.emit("join", this.address);
     }
 
     /*
         Function to do initial setup
-        setup your turn, gameId and your inital isgn
+        setup your turn, gameId and your inital sign
     */
     start(isYourTurn, gameId) {
+        this.board = [0, 0, 0, 0, 0, 0, 0, 0, 0];
         this.isYourTurn = isYourTurn;
         this.gameId = gameId;
-        console.warn("Game has started", this.sign);
         this.sign = (this.isYourTurn) ? "X" : "O";
         this.displayBoard();
     }
@@ -98,7 +123,6 @@ class Game {
             for (var innerIndex in combination) {
                 string += this.board[combination[innerIndex]];
             }
-            console.warn(string);
             if (string === oWinner) {
                 this.winner = oWinner;
             }
@@ -143,7 +167,7 @@ class Game {
     */
     updateBoard(index) {
         this.board[index - 1] = this.sign;
-        //this.isYourTurn = false;
+        this.isYourTurn = false;
         this.checkWinner();
         this.displayBoard();
         if (!this.winner) {
@@ -200,7 +224,6 @@ class Game {
         this.updateState(game);
     }
 
-
 }
 
 readline.question(`Input Address: `, (address) => {
@@ -208,3 +231,4 @@ readline.question(`Input Address: `, (address) => {
 
 })
 
+console.warn("Running");

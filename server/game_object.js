@@ -1,18 +1,18 @@
 
-
 /*
     Constructor function to create an Object of game
     :Param id: random id of the game
     :Param address: address of the first player to request a new game
     :Param socket: web socket object of a player
 */
-function GameObject(id, address, socket) {
+function GameObject(id, address, socket,rounds) {
     console.warn("New Game Object defined");
     this.id = id;               // Random ID of the game
     this.players = 0;           // Number of players
     this.isWaiting = true;      // is Game in waiting state
     this.playerAddress = [];    // Address of both players
     this.connections = [];      // Socket of both players
+    this.rounds = rounds;
 
 
     /*

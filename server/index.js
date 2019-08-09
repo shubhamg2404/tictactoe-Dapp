@@ -27,10 +27,10 @@ io.on('connection', function (socket) {
     :Event play: is called when user takes his turn and send data to server
 */
 function addListeners(socket) {
-    socket.on('join', function (address) {
+    socket.on('join', function (address,rounds) {
         console.warn(address, "joined");
         if (!Object.keys(gameMapping).length) {
-            generateNewGame(address, socket);
+            generateNewGame(address, socket,rounds);
         } else {
             var currentGame = getPendingGame();
             if (!currentGame) {
