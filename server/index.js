@@ -27,19 +27,17 @@ io.on('connection', function (socket) {
     :Event play: is called when user takes his turn and send data to server
 */
 function addListeners(socket) {
-    socket.on('join', function (address) {
-        console.warn(address, "joined");
-        if (!Object.keys(gameMapping).length) {
-            generateNewGame(address, socket);
-        } else {
-            var currentGame = getPendingGame();
-            if (!currentGame) {
-                currentGame = generateNewGame(address, socket);
-            } else {
-                console.warn("found already pending game", currentGame.id);
-                currentGame.addPlayer(address, socket);
-            }
 
+    socket.on('newGame', function(address,rounds,bet){
+        generateNewGame(address,socket,rounds,bet);
+    })
+
+
+    socket.on('join', function (address,gameId) {
+        if(gameId in gameMapping){
+            gameMapping[gameId].addPlayer(address,socket);
+        }else{
+            // TODO Handling for wrong game id passed
         }
     })
 
@@ -48,9 +46,15 @@ function addListeners(socket) {
         var id = decryptedData.gameId;
         var address = decryptedData.address;
         if (id in gameMapping) {
-            gameMapping[id].sendDataToClient(address, data);
+            gameMapping[id].sendDataToClient(address, decryptedData);
+        }else{
+            console.error("Game ID NOT FOUND");
         }
-        //socket.broadcast.emit("play", data);
+    })
+    socket.on('continue',function(address,gameId){
+        if (gameId in gameMapping) {
+            gameMapping[gameId].continueToGame(address);
+        }
     })
 }
 
@@ -59,9 +63,9 @@ function addListeners(socket) {
     :Param address: address of the player
     :Param socket: socket object
 */
-function generateNewGame(address, socket) {
+function generateNewGame(address, socket,rounds,bet) {
     var gameId = utils.generateRandomId();
-    gameMapping[gameId] = new GameObject(gameId, address, socket);
+    gameMapping[gameId] = new GameObject(gameId, address, socket,rounds,bet);
     return gameMapping[gameId];
 }
 
@@ -69,9 +73,9 @@ function generateNewGame(address, socket) {
 /*
     Function to check is any player is waiting for another player to join
 */
-function getPendingGame() {
-    for (var key in gameMapping) {
-        if (gameMapping[key].isWaiting) return gameMapping[key];
-    }
-    return false;
-}
+// function getPendingGame() {
+//     for (var key in gameMapping) {
+//         if (gameMapping[key].isWaiting) return gameMapping[key];
+//     }
+//     return false;
+// }
