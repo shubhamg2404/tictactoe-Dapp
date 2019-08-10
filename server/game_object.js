@@ -1,20 +1,23 @@
-
+const utils = require('./utils');
 /*
     Constructor function to create an Object of game
     :Param id: random id of the game
     :Param address: address of the first player to request a new game
     :Param socket: web socket object of a player
 */
-function GameObject(id, address, socket,rounds) {
-    console.warn("New Game Object defined");
+function GameObject(id, address, socket, rounds, bet) {
     this.id = id;               // Random ID of the game
     this.players = 0;           // Number of players
     this.isWaiting = true;      // is Game in waiting state
     this.playerAddress = [];    // Address of both players
     this.connections = [];      // Socket of both players
+    this.previousBoard = [0, 0, 0, 0, 0, 0, 0, 0, 0];
     this.rounds = rounds;
-
-
+    this.bet = bet;
+    this.currentRound = 0;
+    this.winnerMapping = {};
+    this.waitingNumber = 0;
+    this.finalWinner = null;
     /*
         Function to add a player to the game
         :Param address: address of the player
@@ -27,20 +30,46 @@ function GameObject(id, address, socket,rounds) {
             this.connections.push(socket);
 
             if (this.players == 2) { // If both players have joined the game then start
-                this.start();
+                this.sendEventToBothPlayers("continue");
             }
         }
     }
+
+    this.sendEventToBothPlayers = function (event,data) {
+        if(!data){
+            data = this.getEncryptedPayLoad()
+        }
+        this.connections[0].emit(event,data);
+        this.connections[1].emit(event,data);
+    }
+
+
+    this.continueToGame = function (address) {
+        this.waitingNumber++;
+        if (this.waitingNumber == 2) {
+            this.previousBoard = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+            this.start();
+        }
+    }
+
 
     /*
         Function to start the game
     */
     this.start = function () {
+        if (!Object.keys(this.winnerMapping).length) {
+            this.winnerMapping[this.playerAddress[0]] = 0;
+            this.winnerMapping[this.playerAddress[1]] = 0;
+        }
+        
+        this.currentRound++;
+        var encryptedData = this.getEncryptedPayLoad();
         console.warn('staring new game', this.id);
         var firstChance = Math.round(Math.random());
-        this.connections[firstChance].emit("start", true, this.id);
-        this.connections[1 - firstChance].emit("start", false, this.id);
+        this.connections[firstChance].emit("start", true, encryptedData);
+        this.connections[1 - firstChance].emit("start", false, encryptedData);
         this.isWaiting = false;
+        this.waitingNumber = 0;
     }
 
     /*
@@ -49,14 +78,85 @@ function GameObject(id, address, socket,rounds) {
         :Param data: data to send to other player
     */
     this.sendDataToClient = function (fromAddress, data) {
+        var verified = this.verifyWithPerviousBoard(data.board);
+        var encryptedData = utils.encryptMessage(data);
+
         var index = this.playerAddress.indexOf(fromAddress);
         if (index != -1) {
-            this.connections[1 - index].emit("play", data);
+            if (verified) {
+                this.connections[1 - index].emit("play", encryptedData);
+                var winner = utils.checkWinner(data.board);
+                console.warn(winner,data.board);
+                if (winner) {
+                    console.warn("Plaer won");
+                    this.winnerMapping[fromAddress] += 1
+                    if(this.currentRound == this.rounds){
+                        this.finalWinner = this.settleScore();
+                        this.sendEventToBothPlayers("endGame",finalWinner);
+                    }else{
+                        this.sendEventToBothPlayers("continue");
+                    }
+                    
+                }
+            } else {
+                // TODO fromAddress Cheated do handling
+            }
+
         } else {
             console.warn("NOT FOUND")
         }
     }
+
+
+    this.getEncryptedPayLoad = function () {
+        var data = this.getPayLoad();
+        return utils.encryptMessage(data);
+    }
+
+    this.getPayLoad = function () {
+        return {
+            id: this.id,
+            bet: this.bet,
+            rounds: this.rounds,
+            currentRound: this.currentRound,
+            winners: this.winnerMapping,
+            finalWinner: this.finalWinner
+        }
+    }
+    this.verifyWithPerviousBoard = function (newBoard) {
+        var differences = 0;
+
+        if (newBoard && newBoard.length == 9) {
+            for (var index in this.previousBoard) {
+                if (this.previousBoard[index] != newBoard[index]) {
+                    differences += 1
+                }
+            }
+        }
+
+        if (differences == 1) {
+            console.warn("Verified");
+            this.previousBoard = newBoard;
+            return true;
+        }
+        return false;
+    }
+
+    this.settleScore = function(){
+        var winnerAddress = null;
+        if(this.winnerMapping[this.playerAddress[0]] > this.winnerMapping[this.playerAddress[1]]){
+            winnerAddress = this.playerAddress[0]
+        }else if(this.winnerMapping[this.playerAddress[0]] == this.winnerMapping[this.playerAddress[1]]){
+            winnerAddress = "Tied";
+        }else{
+            winnerAddress = this.playerAddress[1];
+        }
+        return winnerAddress;
+    }
+
+
     this.addPlayer(address, socket);
+    socket.emit("shareId", this.id);
 }
 
 module.exports = GameObject;

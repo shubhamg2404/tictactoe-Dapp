@@ -1,10 +1,10 @@
 const utils = require("./utils");
 const io = require('socket.io-client');
+const validators = require('./validators');
 const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout
-})
-const input = require('readline-sync');
+});
 
 class Game {
     constructor(address) {
@@ -16,17 +16,56 @@ class Game {
         this.socket = io.connect("http://localhost:4000");
         this.gameId = null;
         this.rounds = 1;
-        this.currentRound = 1;
-        this.newGame = this.askToCreateGame();
+        this.currentRound = 0;
+        this.bet = 0;
+        this.debug = true;
+        this.scores = null;
+        this.newGame = this.setupGameType();
         this.addListeners();
     }
 
-    askToCreateGame(){
-        if(input.keyInYN('Do you want to create new game?')){
-            return true;
-        }
-        return false;
+    setupGameType() {
+        readline.question("Do you want to create new game? [y/n] ", (choice) => {
+            if (validators.yesAndNoValidator(choice)) {
+                if (this.debug) {
+                    this.socket.emit("newGame", this.address, 3, 2);
+                } else {
+                    this.takeRoundsInput();
+                }
+            } else {
+                readline.question("Enter Game Id: ", (gameNumber) => {
+                    this.id = gameNumber;
+                    this.socket.emit("join", this.address, gameNumber);
+                })
+            }
+        })
     }
+
+    takeRoundsInput(callback) {
+        readline.question("How many rounds?[Numeric Input] ", (rounds) => {
+            if (validators.positiveNumberValidator(rounds)) {
+                this.rounds = rounds;
+                this.takeBetInput();
+            } else {
+                console.warn("Invalid input");
+                this.takeRoundsInput(callback);
+            }
+        })
+
+    }
+
+    takeBetInput() {
+        readline.question("How much do you want to bet? [In ETH]:  ", (bet) => {
+            if (validators.positiveNumberValidator(bet)) {
+                this.bet = bet;
+                this.socket.emit("newGame", this.address, this.rounds, this.bet);
+            } else {
+                console.warn("Invalid input");
+                this.takeBetInput();
+            }
+        })
+    }
+
 
     /*
         Function to add listeners for websockets
@@ -35,27 +74,25 @@ class Game {
         :Event join: is called when player wants to join
     */
     addListeners() {
-        console.warn("Waiting For server");
+
         this.socket.on("start", (isYourTurn, gameId) => {
             this.start(isYourTurn, gameId)
         });
         this.socket.on("play", (param) => {
             this.recieveDataFromServer(param)
         });
+        this.socket.on("continue", (data) => {
+            this.continueToGame(data);
+        })
 
-        if(this.newGame){
-            readline.question("How many rounds? ",(rounds)=>{
-                this.rounds = rounds;
-                readline.question("Bet amount in eth?: ",(bet)=>{
-                    this.bet = bet;
-                    this.socket.emit("newGame",this.address,this.rounds,this.bet); 
-                })
-            })
-        }else{
-            readline.question("Enter Game Id: ",(gameNumber)=>{
-                this.socket.emit("join",this.address,gameNumber);
-            })
-        }
+        this.socket.on("shareId", (gameId) => {
+            console.warn("Share your game id with opponent: ", gameId);
+            this.id = gameId;
+        })
+        this.socket.on("endGame", (data) => {
+            var decryptedData = utils.decryptMessage(data);
+            this.endGame(decryptedData);
+        })
 
         //this.socket.emit("join", this.address);
     }
@@ -64,19 +101,47 @@ class Game {
         Function to do initial setup
         setup your turn, gameId and your inital sign
     */
-    start(isYourTurn, gameId) {
+    start(isYourTurn, data) {
+        var decryptedData = utils.decryptMessage(data);
         this.board = [0, 0, 0, 0, 0, 0, 0, 0, 0];
         this.isYourTurn = isYourTurn;
-        this.gameId = gameId;
+        this.gameId = decryptedData.id;
+        this.bet = decryptedData.bet;
+        this.rounds = decryptedData.rounds;
+        this.scores = decryptedData.winners;
+        this.currentRound = decryptedData.currentRound;
         this.sign = (this.isYourTurn) ? "X" : "O";
+        this.winner = null;
         this.displayBoard();
     }
+
+    endGame(data) {
+        console.clear();
+        displayGameInfo(data.finalWinner);
+    }
+
+    continueToGame(data) {
+        var message = "Start game?[y/n] ";
+        if (this.winner) {
+            message = "Start next game?[y/n] "
+        }
+        readline.question(message, (choice) => {
+            if (validators.yesAndNoValidator(choice)) {
+                this.socket.emit("continue", this.address, this.id);
+            } else {
+                // TODO yes player forfiets the match
+            }
+        })
+    }
+
     /*
         Function to display to board to console
     */
     displayBoard() {
         console.clear();
-        var stringToPrint = '';
+        displayGameInfo();
+        console.warn();
+        var stringToPrint = '\t\t';
         for (var i = 0; i < 9; i++) {
             if (this.board[i]) {    // Index has some value 
                 stringToPrint += "\t" + this.board[i] + "\t";
@@ -85,7 +150,7 @@ class Game {
             }
             stringToPrint += "|"
             if ((i + 1) % 3 == 0) {
-                stringToPrint += "\n";
+                stringToPrint += "\n\t\t";
             }
 
         }
@@ -93,11 +158,27 @@ class Game {
 
         if (this.winner) {
             console.warn(`Winner is player: ${this.winner}`);
-            return;
         }
 
         if (this.isYourTurn && !this.winner) {
             this.takeUserInput();
+        }
+    }
+
+    displayGameInfo(finalWinner) {
+        console.warn("Total rounds: ", this.rounds);
+        console.warn("Current round: ", this.currentRound);
+        console.warn(`Total Bet: ${this.bet} ETH`);
+        for (var key in this.scores) {
+            console.warn(`Score of ${key}: ${this.scores[key]}`);
+        }
+        if(finalWinner){
+            if(finalWinner == "Tied"){
+                console.warn("Match Tied");
+            }else{
+                console.warn(`Final Winner is ${finalWinner}`);
+            }
+            
         }
     }
 
@@ -149,8 +230,7 @@ class Game {
     */
     takeUserInput() {
         readline.question(`Input Index: `, (index) => {
-            index = +index;
-            if (this.checkIfValidInput(index)) {
+            if (validators.boardIndexValidator(index, this.board)) {
                 this.updateBoard(index);
                 // readline.close();
             } else {
@@ -166,6 +246,7 @@ class Game {
         :Param index: index of board already validated
     */
     updateBoard(index) {
+        console.warn("updated board called");
         this.board[index - 1] = this.sign;
         this.isYourTurn = false;
         this.checkWinner();
@@ -173,8 +254,7 @@ class Game {
         if (!this.winner) {
             this.displayWaiting();
         }
-
-        this.sendDataToServer();
+        this.sendDataToServer("play");
     }
 
     /*
@@ -184,24 +264,13 @@ class Game {
         console.log("Waiting for opponent....");
     }
 
-    /*
-        Funtion to check if user has valid input
-        :Returns bool: true if input is vaild false otherwise
-    */
 
-    checkIfValidInput(index) {
-        if (!index) return false; // Condition to check if user input is number
-        if (!(index > 0 && index < 10)) return false; // Condiiton to check if user has input valid index
-        if (this.board[index - 1]) return false; // Condition to check if given index is empty
-
-        return true;
-    }
 
     /*
         Function to construct the gameObject to send to server
         Encrypts data and sends data to server
     */
-    sendDataToServer() {
+    sendDataToServer(event) {
         var gameObject = {
             address: this.address,
             board: this.board,
@@ -211,7 +280,7 @@ class Game {
         var encryptedData = utils.encryptMessage(gameObject);
 
         // Write logic to emit data to server
-        this.socket.emit("play", encryptedData)
+        this.socket.emit(event, encryptedData)
 
     }
 
@@ -225,10 +294,6 @@ class Game {
     }
 
 }
-
-readline.question(`Input Address: `, (address) => {
+readline.question("Input address: ", (address) => {
     new Game(address);
-
-})
-
-console.warn("Running");
+});
