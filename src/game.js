@@ -21,13 +21,18 @@ class Game {
         this.debug = true;
         this.scores = null;
         this.newGame = this.setupGameType();
+        this.contractAddress = null;
         this.addListeners();
     }
+    /*
+        Function to setup game type ie new game of old game
 
+    */
     setupGameType() {
         readline.question("Do you want to create new game? [y/n] ", (choice) => {
             if (validators.yesAndNoValidator(choice)) {
                 if (this.debug) {
+                    // Write Logic to create contract;
                     this.socket.emit("newGame", this.address, 3, 2);
                 } else {
                     this.takeRoundsInput();
@@ -40,6 +45,10 @@ class Game {
             }
         })
     }
+
+    /*
+        Function to take number of rounds input
+    */
 
     takeRoundsInput(callback) {
         readline.question("How many rounds?[Numeric Input] ", (rounds) => {
@@ -54,6 +63,10 @@ class Game {
 
     }
 
+    /*
+        Function to take bet input
+    */
+
     takeBetInput() {
         readline.question("How much do you want to bet? [In ETH]:  ", (bet) => {
             if (validators.positiveNumberValidator(bet)) {
@@ -62,6 +75,23 @@ class Game {
             } else {
                 console.warn("Invalid input");
                 this.takeBetInput();
+            }
+        })
+    }
+
+    /*
+
+     Function to take user input only called when it is user's turn
+
+    */
+    takeUserInput() {
+        readline.question(`Input Index: `, (index) => {
+            if (validators.boardIndexValidator(index, this.board)) {
+                this.updateBoard(index);
+                // readline.close();
+            } else {
+                console.warn("Invalid Input!");
+                this.takeUserInput();
             }
         })
     }
@@ -93,8 +123,6 @@ class Game {
             var decryptedData = utils.decryptMessage(data);
             this.endGame(decryptedData);
         })
-
-        //this.socket.emit("join", this.address);
     }
 
     /*
@@ -115,10 +143,17 @@ class Game {
         this.displayBoard();
     }
 
+    /*
+        Function to end game
+    */
     endGame(data) {
         console.clear();
         displayGameInfo(data.finalWinner);
     }
+
+    /*
+        Function to display continue game
+    */
 
     continueToGame(data) {
         var message = "Start game?[y/n] ";
@@ -165,6 +200,11 @@ class Game {
         }
     }
 
+    /*
+        Function to display ingame Info like totoal rounds, current rounds, total bet
+        :Param finalWinner: address of the winner, if pass it is displayed
+    */
+
     displayGameInfo(finalWinner) {
         console.warn("Total rounds: ", this.rounds);
         console.warn("Current round: ", this.currentRound);
@@ -172,14 +212,20 @@ class Game {
         for (var key in this.scores) {
             console.warn(`Score of ${key}: ${this.scores[key]}`);
         }
-        if(finalWinner){
-            if(finalWinner == "Tied"){
+        if (finalWinner) {
+            if (finalWinner == "Tied") {
                 console.warn("Match Tied");
-            }else{
+            } else {
                 console.warn(`Final Winner is ${finalWinner}`);
             }
-            
+
         }
+    }
+    /*
+        Function to display waiting message
+    */
+    displayWaiting() {
+        console.log("Waiting for opponent....");
     }
 
     /*
@@ -226,21 +272,6 @@ class Game {
     }
 
     /*
-     Function to take user input only called when it is user's turn
-    */
-    takeUserInput() {
-        readline.question(`Input Index: `, (index) => {
-            if (validators.boardIndexValidator(index, this.board)) {
-                this.updateBoard(index);
-                // readline.close();
-            } else {
-                console.warn("Invalid Input!");
-                this.takeUserInput();
-            }
-        })
-    }
-
-    /*
         Function to update board position when user takes his turn
         Checked if winner is descided and sends data to server
         :Param index: index of board already validated
@@ -257,12 +288,7 @@ class Game {
         this.sendDataToServer("play");
     }
 
-    /*
-        Function to display waiting message
-    */
-    displayWaiting() {
-        console.log("Waiting for opponent....");
-    }
+
 
 
 

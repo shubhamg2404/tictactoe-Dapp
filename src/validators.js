@@ -1,9 +1,21 @@
+/*
+    Function to check if user choice yes or not
+    :Param string: input string
+    :Returns bool: true if first char of the string is y false otherwise
+*/
+
 function yesAndNoValidator(string) {
     if (typeof string == "string" && string.toLocaleLowerCase()[0] == "y") {
         return true;
     }
     return false;
 }
+
+/*
+    Function to check if the given number if pisitive number
+    :Param number: number to check
+    :Retruns bool: true if number is posiitve and greater then zero false otherwise
+*/
 function positiveNumberValidator(number) {
     number = +number;
     if (number && number > 0) {
@@ -11,6 +23,19 @@ function positiveNumberValidator(number) {
     }
     return false;
 }
+
+/*
+    Function to check if input key is valid private key
+    :Param key: string to be checked
+    :Returns bool: true if key is find else otherwise
+*/
+
+function privateKeyValidator(key){
+    if(!key && typeof key != "string") return false;
+    if(key.length != 66) return false;
+    return true;
+}
+
 
 /*
     Funtion to check if user has valid input
@@ -29,3 +54,4 @@ function boardIndexValidator(index, board) {
 module.exports.yesAndNoValidator = yesAndNoValidator;
 module.exports.positiveNumberValidator = positiveNumberValidator;
 module.exports.boardIndexValidator = boardIndexValidator;
+module.exports.privateKeyValidator = privateKeyValidator;

@@ -8,20 +8,24 @@ function decryptMessage(data) {
 
 
 /*
-        Function to encrupt Message and sign it
+    Function to encrupt Message and sign it
 */
 function encryptMessage(messageObject) {
     var retValue = JSON.stringify(messageObject);
     return retValue;
 }
 
+/*
+    Function to generate a random number
+    :Returns: Number
+*/
 function generateRandomId() {
     return Math.floor(Math.random() * 1000000000000000);
 }
 
 /*
-       Function to check if the winner is decided
-   */
+    Function to check if the winner is decided
+*/
 function checkWinner(board) {
     var oWinner = "OOO",
         xWinner = "XXX";
@@ -45,7 +49,6 @@ function checkWinner(board) {
     }
     return false;
 }
-
 
 
 module.exports.encryptMessage = encryptMessage;

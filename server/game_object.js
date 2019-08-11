@@ -11,13 +11,15 @@ function GameObject(id, address, socket, rounds, bet) {
     this.isWaiting = true;      // is Game in waiting state
     this.playerAddress = [];    // Address of both players
     this.connections = [];      // Socket of both players
-    this.previousBoard = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    this.rounds = rounds;
-    this.bet = bet;
-    this.currentRound = 0;
-    this.winnerMapping = {};
-    this.waitingNumber = 0;
-    this.finalWinner = null;
+    this.previousBoard = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // Previous Board to check from
+    this.rounds = rounds;       // total number of rounds
+    this.bet = bet;             // Bet for current round
+    this.currentRound = 0;      // Current round number
+    this.winnerMapping = {};    // Winners
+    this.waitingNumber = 0;     // Number of player who are waiting
+    this.finalWinner = null;    // Final winner
+
+
     /*
         Function to add a player to the game
         :Param address: address of the player
@@ -35,6 +37,12 @@ function GameObject(id, address, socket, rounds, bet) {
         }
     }
 
+    /*
+        Function to send the event to both players
+        :Param event: type of event
+        :Param data: data to be sent as payload
+    */
+
     this.sendEventToBothPlayers = function (event,data) {
         if(!data){
             data = this.getEncryptedPayLoad()
@@ -43,6 +51,10 @@ function GameObject(id, address, socket, rounds, bet) {
         this.connections[1].emit(event,data);
     }
 
+
+    /*
+        Function to increment waiting number and reset board
+    */
 
     this.continueToGame = function (address) {
         this.waitingNumber++;
@@ -107,12 +119,20 @@ function GameObject(id, address, socket, rounds, bet) {
         }
     }
 
-
+    /*
+        Function to get encrupted payload
+        :Returns: encrypted data string
+    */
     this.getEncryptedPayLoad = function () {
         var data = this.getPayLoad();
         return utils.encryptMessage(data);
     }
 
+
+    /*
+        Function to get the state object of the game
+        :Returns: current game object
+    */
     this.getPayLoad = function () {
         return {
             id: this.id,
@@ -123,6 +143,12 @@ function GameObject(id, address, socket, rounds, bet) {
             finalWinner: this.finalWinner
         }
     }
+
+    /*
+        Function to veriify that new board is not malicious
+        :Param newBoard: next state board of the game
+        :Returns bool: True if board is not malicious false otherwise
+    */
     this.verifyWithPerviousBoard = function (newBoard) {
         var differences = 0;
 
@@ -141,6 +167,11 @@ function GameObject(id, address, socket, rounds, bet) {
         }
         return false;
     }
+
+    /*
+        Function to settle score check if game mapping who is the last winner
+        :Retruns: address of final winner
+    */
 
     this.settleScore = function(){
         var winnerAddress = null;

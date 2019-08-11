@@ -25,6 +25,7 @@ io.on('connection', function (socket) {
     :Param socket: web socket object
     :Event join: is called when user requets to join a game
     :Event play: is called when user takes his turn and send data to server
+    :Event continue: is called when both the players agree with the game conditions
 */
 function addListeners(socket) {
 
