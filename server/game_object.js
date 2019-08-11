@@ -57,6 +57,7 @@ function GameObject(id, address, socket, rounds, bet) {
     */
 
     this.continueToGame = function (address) {
+        console.warn("continue called",this.waitingNumber);
         this.waitingNumber++;
         if (this.waitingNumber == 2) {
             this.previousBoard = [0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -98,13 +99,12 @@ function GameObject(id, address, socket, rounds, bet) {
             if (verified) {
                 this.connections[1 - index].emit("play", encryptedData);
                 var winner = utils.checkWinner(data.board);
-                console.warn(winner,data.board);
+                //console.warn(winner,data.board);
                 if (winner) {
-                    console.warn("Plaer won");
                     this.winnerMapping[fromAddress] += 1
                     if(this.currentRound == this.rounds){
                         this.finalWinner = this.settleScore();
-                        this.sendEventToBothPlayers("endGame",finalWinner);
+                        this.sendEventToBothPlayers("endGame",this.getEncryptedPayLoad());
                     }else{
                         this.sendEventToBothPlayers("continue");
                     }
@@ -161,7 +161,7 @@ function GameObject(id, address, socket, rounds, bet) {
         }
 
         if (differences == 1) {
-            console.warn("Verified");
+            //console.warn("Verified");
             this.previousBoard = newBoard;
             return true;
         }

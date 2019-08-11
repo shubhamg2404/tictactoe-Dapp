@@ -51,7 +51,16 @@ function boardIndexValidator(index, board) {
     return true;
 }
 
+/*
+    Function to validate proper string input
+*/
+function stringInputValidator(string){
+    if(+string) return false;
+    return true;
+}
+
 module.exports.yesAndNoValidator = yesAndNoValidator;
 module.exports.positiveNumberValidator = positiveNumberValidator;
 module.exports.boardIndexValidator = boardIndexValidator;
 module.exports.privateKeyValidator = privateKeyValidator;
+module.exports.stringInputValidator = stringInputValidator;

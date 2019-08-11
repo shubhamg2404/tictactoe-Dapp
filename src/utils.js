@@ -1,5 +1,4 @@
 const ethereumjs = require('ethereumjs-abi');
-
 /*
     Function to decrypt Message from server
 */
@@ -29,6 +28,7 @@ function generateHash(gameObjectString){
     ).toString('hex');
     return hash;
 }
+
 
 
 module.exports.encryptMessage = encryptMessage;
