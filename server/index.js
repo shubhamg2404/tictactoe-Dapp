@@ -29,9 +29,15 @@ io.on('connection', function (socket) {
 */
 function addListeners(socket) {
 
-    socket.on('newGame', function(address,rounds,bet){
-        generateNewGame(address,socket,rounds,bet);
+    // socket.on('newGame', function(address,rounds,bet){
+    //     generateNewGame(address,socket,rounds,bet);
+    // })
+
+    socket.on('newGame', function(data){
+        var decryptedData = utils.decryptMessage(data);
+        generateNewGame(decryptedData,socket);
     })
+
 
 
     socket.on('join', function (address,gameId) {
@@ -64,9 +70,21 @@ function addListeners(socket) {
     :Param address: address of the player
     :Param socket: socket object
 */
-function generateNewGame(address, socket,rounds,bet) {
+// function generateNewGame(address, socket,rounds,bet) {
+//     var gameId = utils.generateRandomId();
+//     var address = data.address;
+//     var rounds = data.rounds;
+//     var bet = data.bet;
+//     gameMapping[gameId] = new GameObject(gameId, address, socket,rounds,bet);
+//     return gameMapping[gameId];
+// }
+function generateNewGame(data,socket) {
     var gameId = utils.generateRandomId();
-    gameMapping[gameId] = new GameObject(gameId, address, socket,rounds,bet);
+    var address = data.address;
+    var rounds = data.rounds;
+    var bet = data.bet;
+    var contractAddress = data.contractAddress;
+    gameMapping[gameId] = new GameObject(gameId, address, socket,rounds,bet,contractAddress);
     return gameMapping[gameId];
 }
 

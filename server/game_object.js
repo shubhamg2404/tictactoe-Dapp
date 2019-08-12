@@ -5,7 +5,7 @@ const utils = require('./utils');
     :Param address: address of the first player to request a new game
     :Param socket: web socket object of a player
 */
-function GameObject(id, address, socket, rounds, bet) {
+function GameObject(id, address, socket, rounds, bet, contractAddress) {
     this.id = id;               // Random ID of the game
     this.players = 0;           // Number of players
     this.isWaiting = true;      // is Game in waiting state
@@ -18,7 +18,7 @@ function GameObject(id, address, socket, rounds, bet) {
     this.winnerMapping = {};    // Winners
     this.waitingNumber = 0;     // Number of player who are waiting
     this.finalWinner = null;    // Final winner
-
+    this.contractAddress = contractAddress;
 
     /*
         Function to add a player to the game
@@ -32,7 +32,7 @@ function GameObject(id, address, socket, rounds, bet) {
             this.connections.push(socket);
 
             if (this.players == 2) { // If both players have joined the game then start
-                this.sendEventToBothPlayers("continue");
+                this.sendEventToBothPlayers("continue",true);
             }
         }
     }
@@ -140,7 +140,8 @@ function GameObject(id, address, socket, rounds, bet) {
             rounds: this.rounds,
             currentRound: this.currentRound,
             winners: this.winnerMapping,
-            finalWinner: this.finalWinner
+            finalWinner: this.finalWinner,
+            contractAddress:this.contractAddress
         }
     }
 

@@ -8,22 +8,23 @@ const validators = require('./validators');
 
 class Game {
     constructor(userInputObj, readline) {
-        this.account = userInputObj.account;
-        this.board = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-        this.isYourTurn = false;
-        this.address = userInputObj.account.address;
-        this.winner = undefined;
-        this.socket = io.connect("http://localhost:4000");
-        this.gameId = userInputObj.gameId;
-        this.rounds = userInputObj.rounds;
-        this.currentRound = 0;
-        this.bet = userInputObj.bet;
-        this.debug = true;
-        this.scores = null;
+        this.account = userInputObj.account;                // Web3 account object
+        this.board = [0, 0, 0, 0, 0, 0, 0, 0, 0];           // Game board
+        this.isYourTurn = false;                            // Flag to tell if you it is your turn
+        this.address = userInputObj.account.address;        // public key
+        this.winner = undefined;                            // Winner of the game
+        this.socket = io.connect("http://localhost:4000");  // socket object
+        this.gameId = userInputObj.gameId;                  // Game ID Null if user selected new game
+        this.rounds = userInputObj.rounds;                  // Total number of rounds
+        this.currentRound = 0;                              // Current round
+        this.bet = userInputObj.bet;                        // Bet in game coins
+        this.debug = true;                                  // Debug 
+        this.scores = null;                                 // Scored Mapping
         this.addListeners();
+        this.contractAddress = null;                        // State Channel address
+        this.readline = readline;                           
+        this.contract = userInputObj.contract;              // Contract instance
         this.newGame = this.setupGameType();
-        this.contractAddress = null;
-        this.readline = readline;
     }
     /*
         Function to setup game type ie new game of old game
@@ -31,7 +32,8 @@ class Game {
     */
     setupGameType() {
         if (!this.gameId) {
-            this.socket.emit("newGame", this.address, this.rounds, this.bet);
+            //this.socket.emit("newGame", this.address, this.rounds, this.bet);
+            this.sendDataToServer("newGame");
         } else {
             this.socket.emit("join", this.address, this.gameId);
         }
@@ -262,7 +264,10 @@ class Game {
             address: this.address,
             board: this.board,
             winner: this.winner,
-            gameId: this.gameId
+            gameId: this.gameId,
+            rounds:this.rounds,
+            bet:this.bet,
+            contractAddress:this.contract.address
         }
         var sign = this.account.hashAndSignMessage(gameObject);
         gameObject.sign = sign;
